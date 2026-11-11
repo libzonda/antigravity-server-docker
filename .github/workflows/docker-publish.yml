@@ -119,6 +119,7 @@ jobs:
           GHCR_IMAGE="${{ env.GHCR_REGISTRY }}/${OWNER}/antigravity-server"
           IMAGE_LIST="${GHCR_IMAGE}"
 
+          DOCKERHUB_TARGET=""
           # Add Docker Hub if credentials are set
           if [ -n "$DOCKERHUB_USERNAME" ]; then
             REPO="$DOCKERHUB_REPO"
@@ -126,6 +127,7 @@ jobs:
               REPO="${DOCKERHUB_USERNAME}/antigravity-server"
             fi
             IMAGE_LIST="${IMAGE_LIST},${REPO}"
+            DOCKERHUB_TARGET="${REPO}"
             echo "Docker Hub target: ${REPO}"
           else
             echo "Notice: Docker Hub secrets not configured, skipping Docker Hub target."
@@ -133,6 +135,7 @@ jobs:
 
           echo "GHCR target: ${GHCR_IMAGE}"
           echo "images=${IMAGE_LIST}" >> $GITHUB_OUTPUT
+          echo "dockerhub_repo=${DOCKERHUB_TARGET}" >> $GITHUB_OUTPUT
 
       - name: Extract metadata and tags
         id: meta
@@ -163,3 +166,16 @@ jobs:
             DOWNLOAD_LS=false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub Description
+        if: github.event_name != 'pull_request' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' && steps.images.outputs.dockerhub_repo != ''
+        uses: peter-evans/dockerhub-description@v4
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ steps.images.outputs.dockerhub_repo }}
+          readme-filepath: ./DOCKERHUB.md
+          short-description: "Self-hosted cloud & mobile server for Google Antigravity with touch UX patches"
