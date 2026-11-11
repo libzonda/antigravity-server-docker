@@ -1,0 +1,41 @@
+services:
+  antigravity-server:
+    image: antigravity-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: dev
+        DOWNLOAD_LS: "false"
+    container_name: antigravity-server
+    restart: unless-stopped
+    ports:
+      - "${AGY_PORT:-8765}:8765"
+    environment:
+      - AGY_PORT=8765
+      - AGY_BIND=0.0.0.0
+      - AGY_WORKSPACE_ROOT=/workspace
+      # Optional: set a static web login password (auto-generated on first run if empty)
+      - AGY_PASSWORD=${AGY_PASSWORD:-}
+      # Optional: public domain URL (e.g. https://agy.yourdomain.com)
+      - AGY_PUBLIC_URL=${AGY_PUBLIC_URL:-}
+      # Optional: trusted reverse proxy CIDR when behind Caddy/Nginx (e.g. 127.0.0.1/32)
+      - AGY_TRUSTED_PROXIES=${AGY_TRUSTED_PROXIES:-}
+      # Optional: user permissions for mounted volumes (0 for root, or 1000:1000)
+      - PUID=${PUID:-0}
+      - PGID=${PGID:-0}
+    volumes:
+      # Data directory: stores credentials.json, sessions.json, csrf-token.txt
+      - ./data:/data
+      # Workspace directory: where your agent projects and repositories live
+      - ./workspace:/workspace
+      # Google OAuth and agent customizations (~/.gemini/)
+      - ./gemini:/data/.gemini
+      # Language server binary persistence (avoids re-downloading on container recreation)
+      - ./opt-ls:/opt/agy-server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSL http://127.0.0.1:8765/favicon.ico || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

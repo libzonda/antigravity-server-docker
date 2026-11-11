@@ -1,0 +1,159 @@
+name: Build and Publish Docker Images
+
+on:
+  schedule:
+    # 每天 UTC 02:00 (北京时间 10:00) 自动检查上游版本并构建
+    - cron: '0 2 * * *'
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+    paths-ignore:
+      - 'README.md'
+      - 'ANTIGRAVITY_SERVER_PRINCIPLES.md'
+      - '.env.example'
+      - 'docs/**'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - 'README.md'
+      - 'ANTIGRAVITY_SERVER_PRINCIPLES.md'
+      - '.env.example'
+  workflow_dispatch:
+    inputs:
+      target_tag:
+        description: '指定构建的 antigravity-server 版本 Tag (如 v0.2.65, 留空默认为最新 Tag)'
+        required: false
+        default: 'latest'
+      push_images:
+        description: '是否推送镜像至镜像仓库 (GHCR / Docker Hub)'
+        required: true
+        type: boolean
+        default: true
+
+env:
+  GHCR_REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Image (Multi-Arch)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Ensure antigravity-server source exists
+        run: |
+          if [ ! -d "antigravity-server/.git" ] && [ ! -f "antigravity-server/go.mod" ]; then
+            echo "Cloning upstream antigravity-server repository..."
+            git clone https://github.com/AFSlayer/antigravity-server.git antigravity-server
+          fi
+          cd antigravity-server
+          git fetch --tags origin
+
+      - name: Resolve target version
+        id: version
+        run: |
+          cd antigravity-server
+          INPUT_TAG="${{ github.event.inputs.target_tag }}"
+          
+          if [ -n "$INPUT_TAG" ] && [ "$INPUT_TAG" != "latest" ]; then
+            TARGET_TAG="$INPUT_TAG"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TARGET_TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TARGET_TAG=$(git tag -l --sort=-v:refname | head -n 1)
+          fi
+
+          echo "Target build version: ${TARGET_TAG}"
+          git checkout "$TARGET_TAG"
+          
+          # Clean version (strip leading 'v' for tags like 0.2.65)
+          CLEAN_VER="${TARGET_TAG#v}"
+          
+          echo "target_tag=${TARGET_TAG}" >> $GITHUB_OUTPUT
+          echo "clean_version=${CLEAN_VER}" >> $GITHUB_OUTPUT
+
+      - name: Set up QEMU (for multi-platform builds)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub (if secrets configured)
+        if: github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Determine image targets
+        id: images
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          GHCR_IMAGE="${{ env.GHCR_REGISTRY }}/${OWNER}/antigravity-server"
+          IMAGE_LIST="${GHCR_IMAGE}"
+
+          # Add Docker Hub if credentials are set
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+            DOCKERHUB_REPO="${{ secrets.DOCKERHUB_REPO }}"
+            if [ -z "$DOCKERHUB_REPO" ]; then
+              DOCKERHUB_REPO="${{ secrets.DOCKERHUB_USERNAME }}/antigravity-server"
+            fi
+            IMAGE_LIST="${IMAGE_LIST},${DOCKERHUB_REPO}"
+            echo "Docker Hub target: ${DOCKERHUB_REPO}"
+          else
+            echo "Notice: Docker Hub secrets not configured, skipping Docker Hub target."
+          fi
+
+          echo "GHCR target: ${GHCR_IMAGE}"
+          echo "images=${IMAGE_LIST}" >> $GITHUB_OUTPUT
+
+      - name: Extract metadata and tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.images.outputs.images }}
+          tags: |
+            type=raw,value=latest,enable=true
+            type=raw,value=${{ steps.version.outputs.target_tag }}
+            type=raw,value=${{ steps.version.outputs.clean_version }}
+          labels: |
+            org.opencontainers.image.title=Antigravity Server
+            org.opencontainers.image.description=Self-hosted cloud & mobile server for Google Antigravity
+            org.opencontainers.image.version=${{ steps.version.outputs.target_tag }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Build and push multi-arch Docker images
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' && (github.event.inputs.push_images == 'true' || github.event.inputs.push_images == '') }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.target_tag }}
+            DOWNLOAD_LS=false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

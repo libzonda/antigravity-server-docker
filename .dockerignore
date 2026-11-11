@@ -1,0 +1,9 @@
+.git
+.github
+*.tmp
+*.log
+data/
+workspace/
+gemini/
+ANTIGRAVITY_SERVER_PRINCIPLES.md
+antigravity-server/docs/assets

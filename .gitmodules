@@ -1,0 +1,3 @@
+[submodule "antigravity-server"]
+	path = antigravity-server
+	url = https://github.com/AFSlayer/antigravity-server.git

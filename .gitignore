@@ -1,0 +1,14 @@
+# Runtime and volume directories
+data/
+workspace/
+gemini/
+opt-ls/
+.env
+
+# Temporary and log files
+*.log
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
