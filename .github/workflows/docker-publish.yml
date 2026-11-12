@@ -11,7 +11,8 @@ on:
     tags:
       - 'v*'
     paths-ignore:
-      - 'README.md'
+      - 'README*.md'
+      - 'DOCKERHUB.md'
       - 'ANTIGRAVITY_SERVER_PRINCIPLES.md'
       - '.env.example'
       - 'docs/**'
@@ -20,7 +21,8 @@ on:
       - main
       - master
     paths-ignore:
-      - 'README.md'
+      - 'README*.md'
+      - 'DOCKERHUB.md'
       - 'ANTIGRAVITY_SERVER_PRINCIPLES.md'
       - '.env.example'
   workflow_dispatch:

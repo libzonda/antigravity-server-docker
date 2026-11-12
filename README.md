@@ -1,6 +1,8 @@
 # Antigravity Server Docker
 
-Docker 容器化部署方案，支持 **随着 upstream 版本自动检查与平滑更新**，基于 Google Antigravity 自托管代理服务 [antigravity-server](https://github.com/AFSlayer/antigravity-server)。
+[English](README.md) · [简体中文](README_zh-CN.md)
+
+Production-ready Docker containerization for [antigravity-server](https://github.com/AFSlayer/antigravity-server) (Google Antigravity self-hosted reverse proxy), featuring **automated upstream version tracking and seamless zero-downtime upgrades**.
 
 [![Build and Publish Docker Images](https://github.com/libzonda/antigravity-server-docker/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/libzonda/antigravity-server-docker/actions/workflows/docker-publish.yml)
 [![GHCR](https://img.shields.io/badge/ghcr.io-libzonda%2Fantigravity--server-blue?logo=github)](https://github.com/libzonda/antigravity-server-docker/pkgs/container/antigravity-server)
@@ -9,197 +11,199 @@ Docker 容器化部署方案，支持 **随着 upstream 版本自动检查与平
 
 ---
 
-## 🌟 核心特性
+## 🌟 Core Features
 
-- 🔄 **随版本自动更新**：内置 `build.sh` 与 `update.sh`，自动比对上游 Git Tag，一键切换并构建对应版本的镜像；
-- 📦 **开箱即用**：提供完善的 `docker-compose.yml`，内置健康检查、音视频/大文件支持、无头环境 Google OAuth 中继；
-- ⚡ **双层自动运维**：
-  - **外层**：脚本一键跟随 `antigravity-server` 补丁更新（`./update.sh`）；
-  - **内层**：容器内集成 Google `language_server` 自动下载与每日空闲内存维护；
-- 🛡️ **轻量且安全**：基于 Debian Slim 打造，静态编译 Go 二进制，支持 `PUID`/`PGID` 权限降权，镜像仅约 68MB；
-- 📱 **完备移动端体验**：包含 61 项触屏 UX、虚拟键盘追踪、CJK 输入法保护、长列表滚动防雪崩补丁。
+- 🔄 **Automated Version Tracking & Upgrades**: Built-in `build.sh` and `update.sh` scripts automatically detect new upstream Git tags, switch versions, and build Docker images seamlessly;
+- 📦 **Out-of-the-box Deployment**: Includes a robust `docker-compose.yml` with built-in health checks, chunked streaming upload support, and headless Google OAuth relay;
+- ⚡ **Dual-layer Automated Maintenance**:
+  - **Outer layer**: Follows `antigravity-server` patches and releases via `./update.sh`;
+  - **Inner layer**: Automatically downloads Google `language_server` on startup and recycles memory during daily idle windows;
+- 🛡️ **Lightweight & Secure**: Built on Debian Slim with statically linked Go binaries, supporting `PUID`/`PGID` privilege dropping (image footprint is only ~68MB);
+- 📱 **Complete Mobile Touch UX**: Includes 61 runtime patches addressing mobile touch interaction, visual viewport keyboard tracking, CJK IME composition protection, and scroll avalanche prevention.
 
 ---
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 1. 克隆并进入目录
+### 1. Clone the Repository (with Submodules)
 ```bash
 git clone --recurse-submodules https://github.com/libzonda/antigravity-server-docker.git
 cd antigravity-server-docker
 ```
 
-### 2. 构建 Docker 镜像
-使用构建脚本，自动探测并检出最新 Tag 并完成编译：
+### 2. Build the Docker Image
+Run the build script, which automatically checks out the latest upstream tag and compiles:
 ```bash
 ./build.sh
 ```
 
-### 3. 配置环境变量（可选）
-复制配置模板：
+### 3. Configure Environment Variables (Optional)
+Copy the configuration template:
 ```bash
 cp .env.example .env
 ```
-编辑 `.env` 设置你的端口或固定密码：
+Edit `.env` to configure your port or static password:
 ```env
 AGY_PORT=8765
 AGY_PASSWORD=YourStrongPassword123!
 ```
-> 注：若不设置 `AGY_PASSWORD`，首次启动会在容器日志中打印随机生成的安全密码。
+> Note: If `AGY_PASSWORD` is omitted, a random secure password will be generated automatically on first boot and printed in the container logs.
 
-### 4. 启动服务
+### 4. Start the Service
 ```bash
 docker compose up -d
 ```
-启动后访问 `http://<服务器IP>:8765` 即可打开 Web 界面。
+Once started, open `http://<your-server-ip>:8765` in your browser.
 
 ---
 
-## 🔄 随版本更新机制（Version Upgrades）
+## 🔄 Version Upgrades & Maintenance
 
-项目设计了全自动的版本检测与更新流程，可根据需要随时跟进上游新版本：
+The project is designed with an automated version detection and upgrade workflow to stay up to date with upstream releases:
 
-### 1. 检查是否有新版本
+### 1. Check for New Versions
 ```bash
 ./build.sh --check
 ```
-*输出示例：*
-- 若已是最新：`[OK] Local repository is already on the latest tag (v0.2.65).`
-- 若有新版本：`[WARN] A newer tag is available: v0.2.66 (current: v0.2.65).`
+*Example output:*
+- Already up-to-date: `[OK] Local repository is already on the latest tag (v0.2.65).`
+- New version available: `[WARN] A newer tag is available: v0.2.66 (current: v0.2.65).`
 
-### 2. 一键更新并重启容器（推荐）
-执行 `update.sh` 脚本：
+### 2. One-click Update & Container Restart (Recommended)
+Run the `update.sh` script:
 ```bash
 ./update.sh
 ```
-该脚本会自动：
-1. 抓取 upstream 最新 Git Tag；
-2. 检出最新版本源码并编译新镜像（如 `antigravity-server:v0.2.66` 和 `latest`）；
-3. 自动调用 `docker compose up -d` 重建并平滑重启容器。
+This script will:
+1. Fetch latest upstream Git tags;
+2. Check out the latest source code and build the updated image (e.g. `antigravity-server:v0.2.66` and `:latest`);
+3. Re-run `docker compose up -d` to recreate and restart containers smoothly.
 
-> **提示**：可将 `./update.sh` 加入系统的 `crontab` 定时任务，实现无人值守自动更新：
+> **Tip**: You can schedule `./update.sh` via `crontab` for unattended automatic updates:
 > ```cron
-> # 每天凌晨 3 点自动检查更新
-> 0 3 * * * cd /home/user/antigravity-server-docker && ./update.sh >> update.log 2>&1
+> # Automatically check for updates daily at 3:00 AM
+> 0 3 * * * cd /path/to/antigravity-server-docker && ./update.sh >> update.log 2>&1
 > ```
 
-### 3. 构建指定版本
-如需构建或回退到特定历史版本：
+### 3. Build a Specific Version
+To build or roll back to a specific tag:
 ```bash
 ./build.sh --tag v0.2.64
 ```
 
-### 4. 构建参数参考
-| 参数 | 说明 |
+### 4. Build Script Options
+| Flag | Description |
 | :--- | :--- |
-| `--latest` | （默认）自动拉取远程 Tags，检出最新版本并构建 |
-| `--tag <TAG>` | 检出指定 Git Tag 并构建（如 `--tag v0.2.65`） |
-| `--current` | 基于当前检出的本地代码构建，不切换 Tag |
-| `--check` | 仅检查是否有上游更新，不执行构建 |
-| `--pull-ls` | 构建期预先下载 Google `language_server`（~180MB），使镜像完全支持离线运行 |
-| `--push` | 构建后自动推送到远程镜像仓库（配合 `IMAGE_NAME`） |
-| `--image <NAME>` | 自定义镜像仓库名称（默认 `antigravity-server`） |
-| `--no-cache` | 构建时不使用 Docker 缓存 |
+| `--latest` | (Default) Automatically fetch remote tags, check out the latest version, and build |
+| `--tag <TAG>` | Check out and build a specific Git tag (e.g. `--tag v0.2.65`) |
+| `--current` | Build using the currently checked-out code without switching tags |
+| `--check` | Check if an upstream update is available without building |
+| `--pull-ls` | Pre-download the official Google `language_server` binary (~180MB) during build for offline readiness |
+| `--push` | Push the built image and tags to a remote Docker registry |
+| `--image <NAME>` | Set a custom image name (default: `antigravity-server`) |
+| `--no-cache` | Build without Docker cache |
 
 ---
 
-## 🤖 GitHub Actions 自动构建与发布 (CI/CD)
+## 🤖 GitHub Actions CI/CD Pipeline
 
-项目已内置完整的 GitHub Actions 工作流 [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)，支持同时构建并推送到 **GitHub Container Registry (GHCR)** 和 **Docker Hub**：
+The repository includes a complete GitHub Actions workflow [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml) that builds and publishes images to both **GitHub Container Registry (GHCR)** and **Docker Hub**:
 
-- 🚀 **多架构构建**：同时构建并发布 `linux/amd64` 和 `linux/arm64`（Apple Silicon、Raspberry Pi 等）；
-- ⏰ **定时追新 (Cron)**：每天定时检测 upstream 新版本，自动构建并发布；
-- 🏷️ **多 Tag 自动生成**：自动生成 `:latest`、`:v0.2.65`、`:0.2.65` 等标签；
-- 🕹️ **手动触发 (Workflow Dispatch)**：支持在 GitHub 网页一键点击触发，并可指定编译版本。
+- 🚀 **Multi-Architecture**: Builds and publishes both `linux/amd64` and `linux/arm64` (Apple Silicon, Raspberry Pi, AWS Graviton);
+- ⏰ **Scheduled Checks (Cron)**: Runs daily to check for upstream updates and automatically publishes new versions;
+- 🏷️ **Multi-Tagging**: Generates `:latest`, `:v0.2.65`, and `:0.2.65` tags;
+- 🕹️ **Manual Trigger (Workflow Dispatch)**: Can be triggered manually from the GitHub UI with custom tag parameters;
+- 📝 **Automated Docker Hub README Sync**: Automatically syncs `DOCKERHUB.md` to Docker Hub overview upon release.
 
-### 配置 GitHub Secrets（发布到 Docker Hub）
-若需推送到 Docker Hub，只需在你的 GitHub 仓库设置中（**Settings → Secrets and variables → Actions**）添加以下两个 Secret：
+### Configuring GitHub Secrets (for Docker Hub)
+To push to Docker Hub, add the following secrets in your repository (**Settings → Secrets and variables → Actions**):
 
-| Secret 名称 | 必填 | 说明 |
+| Secret Name | Required | Description |
 | :--- | :---: | :--- |
-| `DOCKERHUB_USERNAME` | 是 | 你的 Docker Hub 用户名 |
-| `DOCKERHUB_TOKEN` | 是 | 你的 Docker Hub Personal Access Token (PAT) |
-| `DOCKERHUB_REPO` | 否 | 自定义镜像名（默认 `${DOCKERHUB_USERNAME}/antigravity-server`） |
+| `DOCKERHUB_USERNAME` | Yes | Your Docker Hub username |
+| `DOCKERHUB_TOKEN` | Yes | Your Docker Hub Personal Access Token (PAT) |
+| `DOCKERHUB_REPO` | No | Custom repository name (defaults to `${DOCKERHUB_USERNAME}/antigravity-server`) |
 
-> **说明**：GHCR (`ghcr.io`) 使用 GitHub 内置的 `GITHUB_TOKEN`，无需任何配置即可开箱自动推送！如未配置 Docker Hub Secret，工作流会自动安全跳过 Docker Hub，仅推送到 GHCR。
+> **Note**: GHCR (`ghcr.io`) uses GitHub's built-in `GITHUB_TOKEN` and requires zero additional configuration. If Docker Hub secrets are not set, the workflow will safely skip Docker Hub and publish to GHCR only.
 
 ---
 
-## 🔑 Google 账号认证
+## 🔑 Google Account Sign-In (Headless Docker)
 
-容器启动后，如何登录你的 Google 账号：
+After the container starts, sign in to your Google Account using one of the following methods:
 
-### 方式 A：Web 界面验证码登录（推荐）
-1. 在浏览器打开 `http://<服务器IP>:8765`；
-2. 进入 **Settings → Account**，点击 **Sign In**；
-3. 系统会自动重定向至 `/__agy/signin`，点击链接在手机/PC 上完成 Google 授权；
-4. 授权完成后 Google 会展示一次性验证码，将验证码粘贴回页面即可完成认证。
+### Method A: Web UI One-Time Code Flow (Recommended)
+1. Open `http://<server-ip>:8765` in your browser;
+2. Navigate to **Settings → Account** and click **Sign In**;
+3. You will be redirected to `/__agy/signin`. Click the Google authorization link;
+4. Authorize with your Google account. Google will present a one-time code on the final screen;
+5. Copy and paste the code back into the web page to complete sign-in.
 
-### 方式 B：从本地已有环境直接复制 Token
-如果你本地电脑（Mac/Windows/Linux）已经登录过 Antigravity，可直接复制 token 文件到挂载目录：
+### Method B: Copy Existing Token from Desktop
+If you have already signed in on your local machine (macOS/Windows/Linux), copy your existing OAuth token to the mounted directory:
 ```bash
 cp ~/.gemini/jetski-standalone-oauth-token ./gemini/jetski-standalone-oauth-token
 ```
 
 ---
 
-## 📁 数据持久化说明
+## 📁 Volume Persistence
 
-`docker-compose.yml` 默认映射了以下数据卷，确保升级或销毁容器时数据不丢失：
+`docker-compose.yml` mounts the following volumes to ensure zero data loss across updates:
 
-| 宿主机路径 | 容器内路径 | 存储内容 |
+| Host Path | Container Path | Purpose |
 | :--- | :--- | :--- |
-| `./data` | `/data` | 认证密码、Web 会话、CSRF Token、配置文件 |
-| `./workspace` | `/workspace` | 你的项目代码目录，Agent 操作的工作区 |
-| `./gemini` | `/data/.gemini` | Google OAuth 登录凭证（jetski token）、Rules 与 Skills |
-| `./opt-ls` | `/opt/agy-server` | Google `language_server` 核心执行文件（避免容器重建重复下载 180MB） |
+| `./data` | `/data` | Access password hash, web sessions, CSRF token, and config |
+| `./workspace` | `/workspace` | User project directory where the Agent creates and edits code |
+| `./gemini` | `/data/.gemini` | Google OAuth token (`jetski-standalone-oauth-token`), custom skills & rules |
+| `./opt-ls` | `/opt/agy-server` | Google `language_server` binary (persisted to avoid re-downloading ~180MB) |
 
 ---
 
-## ⚙️ 环境变量列表
+## ⚙️ Environment Variables
 
-| 变量名 | 默认值 | 说明 |
+| Variable | Default | Description |
 | :--- | :--- | :--- |
-| `AGY_PORT` | `8765` | Web 界面监听端口 |
-| `AGY_PASSWORD` | 随机生成 | Web 访问密码（首次启动未配置会在容器日志中打印） |
-| `AGY_PUBLIC_URL` | 空 | 外部公开访问地址（例如 `https://agy.example.com`） |
-| `AGY_TRUSTED_PROXIES`| 空 | 受信任反向代理 CIDR（如位于 Caddy/Nginx 后设为 `127.0.0.1/32`） |
-| `PUID` / `PGID` | `0` (root) | 映射到宿主机的用户与组 ID，设为 `1000:1000` 可避免文件权限被 root 占用 |
-| `AGY_WORKSPACE_ROOT` | `/workspace` | 容器内的工作区根目录 |
+| `AGY_PORT` | `8765` | Server listening port |
+| `AGY_PASSWORD` | *(Generated)* | Web UI access password (printed to logs on first boot if omitted) |
+| `AGY_PUBLIC_URL` | *(Empty)* | Public domain URL (e.g. `https://agy.example.com`) |
+| `AGY_TRUSTED_PROXIES`| *(Empty)* | Trusted reverse proxy CIDRs (e.g. `127.0.0.1/32` behind Caddy/Nginx) |
+| `PUID` / `PGID` | `0` (root) | Host user/group ID mapping to prevent file ownership conflicts |
+| `AGY_WORKSPACE_ROOT`| `/workspace` | Workspace directory path inside container |
 
 ---
 
-## 🌐 生产反向代理配置
+## 🌐 Production Reverse Proxy Configuration
 
-若需配置 HTTPS 域名访问，需确保 **禁用缓冲（proxy_buffering off）** 并 **开启 WebSocket 升级**：
+When serving over HTTPS, ensure **buffering is disabled** (required for real-time SSE token streaming) and **WebSocket upgrade is enabled**:
 
-### Nginx 示例
+### Nginx Example
 ```nginx
 server {
     listen 443 ssl http2;
     server_name agy.example.com;
 
-    # SSL 证书配置
+    # SSL configuration
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
 
-    # 允许大文件流式上传
+    # Allow large file streaming uploads
     client_max_body_size 0;
 
     location / {
         proxy_pass http://127.0.0.1:8765;
         proxy_http_version 1.1;
 
-        # WebSocket 支持
+        # WebSocket support
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
 
-        # 禁用缓冲（实时打字流必须）
+        # Disable buffering for real-time token streaming (Required)
         proxy_buffering off;
         proxy_cache off;
         proxy_read_timeout 86400s;
 
-        # 传递客户端真实 IP
+        # Forward client IP
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -208,7 +212,7 @@ server {
 }
 ```
 
-### Caddy 示例
+### Caddy Example
 ```caddyfile
 agy.example.com {
     encode zstd gzip
