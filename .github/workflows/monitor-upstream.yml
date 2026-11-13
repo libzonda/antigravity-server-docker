@@ -1,0 +1,151 @@
+name: Monitor Upstream Release
+
+on:
+  schedule:
+    # 每小时第 20 分钟自动检查上游 AFSlayer/antigravity-server 是否有新 Release / Tag 发布
+    - cron: '20 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: '强制触发构建（即使未检测到版本更新）'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: monitor-upstream
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  check-upstream:
+    name: Check Upstream Release & Trigger Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check upstream and local versions
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching latest upstream release from AFSlayer/antigravity-server..."
+
+          # 1. 查询上游最新 Release
+          LATEST_TAG=$(gh api repos/AFSlayer/antigravity-server/releases/latest --jq '.tag_name' 2>/dev/null || echo "")
+          
+          # 2. 若无正式 Release，查询最新 Tag
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+            echo "Latest release not found via API, falling back to tags API..."
+            LATEST_TAG=$(gh api repos/AFSlayer/antigravity-server/tags --jq '.[0].name' 2>/dev/null || echo "")
+          fi
+
+          # 3. 兜底：使用 git ls-remote 查询
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+            echo "Tags API empty, falling back to git ls-remote..."
+            LATEST_TAG=$(git ls-remote --tags --sort=-v:refname https://github.com/AFSlayer/antigravity-server.git | awk -F'/' '{print $3}' | grep -E '^v[0-9]' | head -n 1)
+          fi
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "::error::Failed to detect upstream latest tag"
+            exit 1
+          fi
+
+          # 4. 获取当前仓库跟踪的版本
+          cd antigravity-server
+          git fetch --tags origin
+          CURRENT_TAG=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null || echo "")
+          cd ..
+
+          if [ -z "$CURRENT_TAG" ]; then
+            CURRENT_TAG=$(grep -oE 'version-v[0-9]+\.[0-9]+\.[0-9]+' README.md | head -n 1 | sed 's/version-//')
+          fi
+
+          echo "=========================================="
+          echo " Upstream Latest Tag : ${LATEST_TAG}"
+          echo " Current Tracked Tag : ${CURRENT_TAG}"
+          echo "=========================================="
+
+          echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "current_tag=${CURRENT_TAG}" >> $GITHUB_OUTPUT
+
+          FORCE_UPDATE="${{ inputs.force_update }}"
+          if [ "$FORCE_UPDATE" = "true" ]; then
+            echo "Force update requested by user. Proceeding with build."
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          elif [ "$LATEST_TAG" != "$CURRENT_TAG" ]; then
+            echo "New upstream version detected: ${CURRENT_TAG} -> ${LATEST_TAG}"
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          else
+            echo "Upstream is already at latest version (${CURRENT_TAG}). No update needed."
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update submodule and badges
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          LATEST_TAG: ${{ steps.check.outputs.latest_tag }}
+        run: |
+          echo "Updating submodule antigravity-server to ${LATEST_TAG}..."
+          cd antigravity-server
+          git checkout "${LATEST_TAG}"
+          cd ..
+
+          echo "Updating version badges in README files..."
+          sed -i -E "s/version-v[0-9]+\.[0-9]+\.[0-9]+/version-${LATEST_TAG}/g" README.md README_zh-CN.md
+          sed -i -E "s/releases\/tag\/v[0-9]+\.[0-9]+\.[0-9]+/releases\/tag\/${LATEST_TAG}/g" README.md README_zh-CN.md
+
+      - name: Commit and push changes
+        id: commit
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          LATEST_TAG: ${{ steps.check.outputs.latest_tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add antigravity-server README.md README_zh-CN.md
+
+          if git diff --staged --quiet; then
+            echo "No file changes to commit."
+          else
+            git commit -m "chore(deps): auto-update antigravity-server to ${LATEST_TAG}"
+            git pull --rebase origin main || true
+            git push origin main
+            echo "Successfully pushed update commit for ${LATEST_TAG}."
+          fi
+
+      - name: Trigger Build & Publish Workflow
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          LATEST_TAG: ${{ steps.check.outputs.latest_tag }}
+        run: |
+          echo "Triggering Build and Publish workflow for ${LATEST_TAG}..."
+          gh workflow run docker-publish.yml --ref main -f target_tag="${LATEST_TAG}" -f push_images=true
+          echo "Successfully triggered 'docker-publish.yml' for ${LATEST_TAG}."
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Upstream Monitor Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Upstream Latest Tag** | \`${{ steps.check.outputs.latest_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Local Tracked Tag** | \`${{ steps.check.outputs.current_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Needs Update** | \`${{ steps.check.outputs.needs_update }}\` |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check.outputs.needs_update }}" = "true" ]; then
+            echo "| **Action** | Updated submodule and triggered Docker image build |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| **Action** | Already up to date, no build required |" >> $GITHUB_STEP_SUMMARY
+          fi

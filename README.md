@@ -5,6 +5,7 @@
 Production-ready Docker containerization for [antigravity-server](https://github.com/AFSlayer/antigravity-server) (Google Antigravity self-hosted reverse proxy), featuring **automated upstream version tracking and seamless zero-downtime upgrades**.
 
 [![Build and Publish Docker Images](https://github.com/libzonda/antigravity-server-docker/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/libzonda/antigravity-server-docker/actions/workflows/docker-publish.yml)
+[![Monitor Upstream Release](https://github.com/libzonda/antigravity-server-docker/actions/workflows/monitor-upstream.yml/badge.svg)](https://github.com/libzonda/antigravity-server-docker/actions/workflows/monitor-upstream.yml)
 [![GHCR](https://img.shields.io/badge/ghcr.io-libzonda%2Fantigravity--server-blue?logo=github)](https://github.com/libzonda/antigravity-server-docker/pkgs/container/antigravity-server)
 [![Latest Tag](https://img.shields.io/badge/version-v0.2.69-brightgreen.svg)](https://github.com/AFSlayer/antigravity-server/releases/tag/v0.2.69)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/AFSlayer/antigravity-server/blob/main/LICENSE)
@@ -222,3 +223,19 @@ agy.example.com {
     }
 }
 ```
+
+---
+
+## 🤖 Automated CI/CD Workflows
+
+This repository provides fully automated GitHub Actions workflows:
+
+1. **[Monitor Upstream Release](.github/workflows/monitor-upstream.yml)** (`monitor-upstream.yml`):
+   - Periodically monitors the upstream repository ([`AFSlayer/antigravity-server`](https://github.com/AFSlayer/antigravity-server)) for new tags / releases every hour;
+   - If a new version is detected, it automatically updates the Git submodule, refreshes README version badges, commits to `main`, and triggers the Docker build workflow;
+   - Supports manual trigger via `workflow_dispatch` (with an optional `force_update` flag).
+
+2. **[Build and Publish Docker Images](.github/workflows/docker-publish.yml)** (`docker-publish.yml`):
+   - Multi-architecture build for `linux/amd64` and `linux/arm64`;
+   - Automatically tags and publishes images to **GitHub Container Registry (GHCR)** and **Docker Hub** (`latest`, `vX.Y.Z`, `X.Y.Z`);
+   - Automatically synchronizes repository descriptions and README to Docker Hub.

@@ -5,6 +5,7 @@
 Docker 容器化部署方案，支持 **随着 upstream 版本自动检查与平滑更新**，基于 Google Antigravity 自托管代理服务 [antigravity-server](https://github.com/AFSlayer/antigravity-server)。
 
 [![Build and Publish Docker Images](https://github.com/libzonda/antigravity-server-docker/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/libzonda/antigravity-server-docker/actions/workflows/docker-publish.yml)
+[![Monitor Upstream Release](https://github.com/libzonda/antigravity-server-docker/actions/workflows/monitor-upstream.yml/badge.svg)](https://github.com/libzonda/antigravity-server-docker/actions/workflows/monitor-upstream.yml)
 [![GHCR](https://img.shields.io/badge/ghcr.io-libzonda%2Fantigravity--server-blue?logo=github)](https://github.com/libzonda/antigravity-server-docker/pkgs/container/antigravity-server)
 [![Latest Tag](https://img.shields.io/badge/version-v0.2.69-brightgreen.svg)](https://github.com/AFSlayer/antigravity-server/releases/tag/v0.2.69)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/AFSlayer/antigravity-server/blob/main/LICENSE)
@@ -220,3 +221,19 @@ agy.example.com {
     }
 }
 ```
+
+---
+
+## 🤖 自动化 CI/CD 工作流
+
+本项目包含完整的 GitHub Actions 持续集成与部署体系：
+
+1. **[Monitor Upstream Release](.github/workflows/monitor-upstream.yml)** (`monitor-upstream.yml`):
+   - 每小时自动监控上游仓库（[`AFSlayer/antigravity-server`](https://github.com/AFSlayer/antigravity-server)）是否发布新 Tag 或 Release；
+   - 一旦发现新版本，自动检出更新 Git 子模块指针，更新 README 版本徽章，提交推送至 `main` 分支，并无缝触发镜像构建；
+   - 支持通过 `workflow_dispatch` 手动触发（支持 `force_update` 选项）。
+
+2. **[Build and Publish Docker Images](.github/workflows/docker-publish.yml)** (`docker-publish.yml`):
+   - 支持 `linux/amd64` 与 `linux/arm64` 双架构跨平台构建；
+   - 自动生成对应版本标签（`latest`, `vX.Y.Z`, `X.Y.Z`）并同步推送到 **GitHub Container Registry (GHCR)** 和 **Docker Hub**；
+   - 自动将 `DOCKERHUB.md` 同步为 Docker Hub 官方文档描述。

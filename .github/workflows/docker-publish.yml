@@ -1,9 +1,6 @@
 name: Build and Publish Docker Images
 
 on:
-  schedule:
-    # 每天 UTC 02:00 (北京时间 10:00) 自动检查上游版本并构建
-    - cron: '0 2 * * *'
   push:
     branches:
       - main
@@ -34,6 +31,18 @@ on:
       push_images:
         description: '是否推送镜像至镜像仓库 (GHCR / Docker Hub)'
         required: true
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      target_tag:
+        description: '指定构建的 antigravity-server 版本 Tag'
+        required: false
+        type: string
+        default: 'latest'
+      push_images:
+        description: '是否推送镜像至镜像仓库 (GHCR / Docker Hub)'
+        required: false
         type: boolean
         default: true
 
@@ -75,7 +84,7 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             TARGET_TAG="${GITHUB_REF#refs/tags/}"
           else
-            TARGET_TAG=$(git tag -l --sort=-v:refname | head -n 1)
+            TARGET_TAG=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null || git tag -l --sort=-v:refname | head -n 1)
           fi
 
           echo "Target build version: ${TARGET_TAG}"
