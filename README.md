@@ -7,7 +7,7 @@ Production-ready Docker containerization for [antigravity-server](https://github
 [![Build and Publish Docker Images](https://github.com/libzonda/antigravity-server-docker/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/libzonda/antigravity-server-docker/actions/workflows/docker-publish.yml)
 [![Monitor Upstream Release](https://github.com/libzonda/antigravity-server-docker/actions/workflows/monitor-upstream.yml/badge.svg)](https://github.com/libzonda/antigravity-server-docker/actions/workflows/monitor-upstream.yml)
 [![GHCR](https://img.shields.io/badge/ghcr.io-libzonda%2Fantigravity--server-blue?logo=github)](https://github.com/libzonda/antigravity-server-docker/pkgs/container/antigravity-server)
-[![Latest Tag](https://img.shields.io/badge/version-v0.2.69-brightgreen.svg)](https://github.com/AFSlayer/antigravity-server/releases/tag/v0.2.69)
+[![Latest Tag](https://img.shields.io/badge/version-v0.2.70-brightgreen.svg)](https://github.com/AFSlayer/antigravity-server/releases/tag/v0.2.70)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/AFSlayer/antigravity-server/blob/main/LICENSE)
 
 ---
