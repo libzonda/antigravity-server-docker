@@ -8,7 +8,7 @@
 [![Monitor Upstream Release](https://github.com/libzonda/antigravity-server-docker/actions/workflows/monitor-upstream.yml/badge.svg)](https://github.com/libzonda/antigravity-server-docker/actions/workflows/monitor-upstream.yml)
 [![GHCR](https://img.shields.io/badge/ghcr.io-libzonda%2Fantigravity--server-blue?logo=github)](https://github.com/libzonda/antigravity-server-docker/pkgs/container/antigravity-server)
 [![Docker Hub](https://img.shields.io/badge/docker%20hub-libzonda%2Fantigravity--server-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/libzonda/antigravity-server)
-[![Latest Tag](https://img.shields.io/badge/version-v0.2.78-brightgreen.svg)](https://github.com/AFSlayer/antigravity-server/releases/tag/v0.2.78)
+[![Latest Tag](https://img.shields.io/badge/version-v0.2.79-brightgreen.svg)](https://github.com/AFSlayer/antigravity-server/releases/tag/v0.2.79)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/AFSlayer/antigravity-server/blob/main/LICENSE)
 
 ---
